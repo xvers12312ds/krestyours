@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Крестики-Нолики</title>
+    <link href="https://kestisllsksd.html" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #121212;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .container {
+            text-align: center;
+            animation: fadeIn 0.5s;
+        }
+        h1 {
+            margin-bottom: 10px;
+            color: #ffcc00;
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            gap: 10px;
+            margin: auto;
+            animation: fadeIn 0.5s;
+        }
+        .cell {
+            width: 100px;
+            height: 100px;
+            background-color: #1e1e1e;
+            border: 2px solid #444;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.5rem;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+            border-radius: 10px;
+        }
+        .cell:hover {
+            background-color: #282828;
+            transform: scale(1.05);
+        }
+        .notification {
+            margin-top: 20px;
+            font-size: 1.5rem;
+        }
+        .reset-button, .level-button, .theme-button {
+            margin: 5px;
+            padding: 10px 20px;
+            background-color: #5cb85c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .reset-button:hover, .level-button:hover, .theme-button:hover {
+            background-color: #4cae4c;
+        }
+        .wins {
+            margin-top: 10px;
+            font-size: 1.2rem;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Крестики-Нолики</h1>
+        <div class="settings">
+            <button class="theme-button" onclick="changeTheme('dark')">Темная Тема</button>
+            <button class="theme-button" onclick="changeTheme('light')">Светлая Тема</button>
+            <button class="level-button" onclick="setBotLevel('easy')">Легкий</button>
+            <button class="level-button" onclick="setBotLevel('medium')">Средний</button>
+            <button class="level-button" onclick="setBotLevel('hard')">Сложный</button>
+            <button class="level-button" onclick="setBotLevel('unbeatable')">Невозможный</button>
+        </div>
+        <div class="board" id="board"></div>
+        <div class="notification" id="notification"></div>
+        <button class="reset-button" id="resetButton">Сбросить игру</button>
+        <div class="wins" id="wins">Победы: 0</div>
+    </div>
+
+    <script>
+        const board = document.getElementById('board');
+        const notification = document.getElementById('notification');
+        const resetButton = document.getElementById('resetButton');
+        const winsDisplay = document.getElementById('wins');
+
+        let currentPlayer = 'X';
+        let gameState = Array(9).fill('');
+        let isGameActive = true;
+        let playerWins = 0;
+        let botLevel = 'easy';
+
+        const winningConditions = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
+        ];
+
+        function createBoard() {
+            gameState.fill('');
+            currentPlayer = 'X';
+            isGameActive = true;
+            notification.textContent = '';
+            board.innerHTML = '';
+
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.setAttribute('data-cell-index', i);
+                cell.addEventListener('click', handleCellClick);
+                board.appendChild(cell);
+            }
+        }
+
+        function handleCellClick(event) {
+            const clickedCell = event.target;
+            const clickedCellIndex = clickedCell.getAttribute('data-cell-index');
+
+            if (gameState[clickedCellIndex] !== '' || !isGameActive) {
+                return;
+            }
+
+            gameState[clickedCellIndex] = currentPlayer;
+            clickedCell.textContent = currentPlayer;
+            checkResult();
+
+            if (isGameActive) {
+                botMove();
+            }
+        }
+
+        function botMove() {
+            const availableCells = gameState.map((val, index) => val === '' ? index : null).filter(val => val !== null);
+            if (availableCells.length === 0) return;
+
+            let randomIndex;
+            if (botLevel === 'easy') {
+                randomIndex = availableCells[Math.floor(Math.random() * availableCells.length)];
+            } else if (botLevel === 'medium') {
+                randomIndex = mediumBotMove(availableCells);
+            } else if (botLevel === 'hard') {
+                randomIndex = hardBotMove(availableCells);
+            } else {
+                randomIndex = unbeatableBotMove(availableCells);
+            }
+
+            gameState[randomIndex] = 'O';
+            const cell = document.querySelector(`.cell[data-cell-index='${randomIndex}']`);
+            cell.textContent = 'O';
+            checkResult();
+        }
+
+        function mediumBotMove(availableCells) {
+            for (let condition of winningConditions) {
+                const [a, b, c] = condition;
+                if (gameState[a] === 'O' && gameState[b] === 'O' && gameState[c] === '') return c;
+                if (gameState[a] === 'O' && gameState[c] === 'O' && gameState[b] === '') return b;
+                if (gameState[b] === 'O' && gameState[c] === 'O' && gameState[a] === '') return a;
+            }
+            return availableCells[Math.floor(Math.random() * availableCells.length)];
+        }
+
+        function hardBotMove(availableCells) {
+            if (gameState[4] === '') return 4; // Center
+            const corners = [0, 2, 6, 8];
+            for (const corner of corners) {
+                if (availableCells.includes(corner)) return corner;
+            }
+            return availableCells[Math.floor(Math.random() * availableCells.length)];
+        }
+
+        function unbeatableBotMove(availableCells) {
+            // Простой алгоритм, выбирающий выигрышный ход или блокирующий игрока, если это возможно.
+            for (let condition of winningConditions) {
+                const [a, b, c] = condition;
+                if (gameState[a] === 'O' && gameState[b] === 'O' && gameState[c] === '') return c;
+                if (gameState[a] === 'O' && gameState[c] === 'O' && gameState[b] === '') return b;
+                if (gameState[b] === 'O' && gameState[c] === 'O' && gameState[a] === '') return a;
+                if (gameState[a] === 'X' && gameState[b] === 'X' && gameState[c] === '') return c;
+                if (gameState[a] === 'X' && gameState[c] === 'X' && gameState[b] === '') return b;
+                if (gameState[b] === 'X' && gameState[c] === 'X' && gameState[a] === '') return a;
+            }
+            return availableCells[Math.floor(Math.random() * availableCells.length)];
+        }
+
+        function checkResult() {
+            let roundWon = false;
+            for (let i = 0; i < winningConditions.length; i++) {
+                const [a, b, c] = winningConditions[i];
+                if (gameState[a] === '' || gameState[b] === '' || gameState[c] === '') {
+                    continue;
+                }
+                if (gameState[a] === gameState[b] && gameState[a] === gameState[c]) {
+                    roundWon = true;
+                    break;
+                }
+            }
+
+            if (roundWon) {
+                notification.textContent = `${currentPlayer} победил!`;
+                isGameActive = false;
+                if (currentPlayer === 'X') {
+                    playerWins++;
+                    winsDisplay.textContent = `Победы: ${playerWins}`;
+                }
+                return;
+            }
+
+            if (!gameState.includes('')) {
+                notification.textContent = 'Ничья!';
+                isGameActive = false;
+                return;
+            }
+
+            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+        }
+
+        resetButton.addEventListener('click', createBoard);
+        createBoard();
+
+        function changeTheme(theme) {
+            if (theme === 'light') {
+                document.body.style.backgroundColor = '#ffffff';
+                document.body.style.color = '#000000';
+                document.querySelectorAll('.cell').forEach(cell => {
+                    cell.style.backgroundColor = '#dddddd';
+                    cell.style.border = '2px solid #999999';
+                });
+            } else {
+                document.body.style.backgroundColor = '#121212';
+                document.body.style.color = '#ffffff';
+                document.querySelectorAll('.cell').forEach(cell => {
+                    cell.style.backgroundColor = '#1e1e1e';
+                    cell.style.border = '2px solid #444444';
+                });
+            }
+        }
+
+        function setBotLevel(level) {
+            botLevel = level;
+            createBoard();
+        }
+    </script>
+</body>
+</html>
